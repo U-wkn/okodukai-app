@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>おこづかい管理アプリ | 学生のためのかんたん収支ノート</title>
+  <meta name="description" content="学生がお金の収入と支出を簡単に管理し、無駄遣いを減らせるWebアプリ。残高表示、グラフ分析、月別収支確認機能つき。">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%3E<text y=%2226%22 font-size=%2224%22>🪙</text></svg>">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-wrapper">
+    <!-- ヘッダー -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon">
+          <i class="fa-solid fa-wallet"></i>
+        </div>
+        <div class="brand-text">
+          <span class="app-subtitle">学生向け収支ノート</span>
+          <h1 class="app-title">おこづかい管理アプリ</h1>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="btnSettings" class="icon-btn" title="データ設定・バックアップ" aria-label="設定">
+          <i class="fa-solid fa-sliders"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- 月選択バー -->
+    <section class="month-selector-bar">
+      <button id="prevMonthBtn" class="month-nav-btn" aria-label="前月">
+        <i class="fa-solid fa-chevron-left"></i>
+      </button>
+      <div class="current-month-display">
+        <i class="fa-regular fa-calendar"></i>
+        <span id="currentMonthLabel">2026年 11月</span>
+        <button id="todayBtn" class="today-tag" title="今月にジャンプ">今月</button>
+      </div>
+      <button id="nextMonthBtn" class="month-nav-btn" aria-label="翌月">
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    </section>
+
+    <!-- メインコンテンツ -->
+    <main class="main-content">
+      <!-- 上段：残高・収支カード & クイックアクション -->
+      <section class="overview-section">
+        <!-- 残高メインカード -->
+        <div class="card balance-card">
+          <div class="balance-header">
+            <span class="balance-tag"><i class="fa-solid fa-coins"></i> 現在の所持金・総残高</span>
+            <span class="balance-sync-status" title="ブラウザに自動保存されています">
+              <i class="fa-solid fa-cloud-arrow-up"></i> 自動保存中
+            </span>
+          </div>
+          <div class="balance-amount-wrapper">
+            <span class="currency-symbol">¥</span>
+            <span id="totalBalance" class="balance-amount">0</span>
+          </div>
+
+          <!-- 当月サマリー（収入・支出・収支差額） -->
+          <div class="month-summary-grid">
+            <div class="summary-item income-item">
+              <div class="summary-icon">
+                <i class="fa-solid fa-arrow-down-long"></i>
+              </div>
+              <div class="summary-info">
+                <span class="summary-label">今月の収入</span>
+                <span class="summary-value" id="monthIncome">¥0</span>
+              </div>
+            </div>
+
+            <div class="summary-item expense-item">
+              <div class="summary-icon">
+                <i class="fa-solid fa-arrow-up-long"></i>
+              </div>
+              <div class="summary-info">
+                <span class="summary-label">今月の支出</span>
+                <span class="summary-value" id="monthExpense">¥0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 予算・節約ステータスバー -->
+          <div class="budget-status-box" id="budgetStatusBox">
+            <div class="budget-info-row">
+              <span class="budget-label"><i class="fa-solid fa-bullseye"></i> 今月の支出目安: <strong id="budgetTargetDisplay">未設定</strong></span>
+              <span class="budget-percent" id="budgetPercentDisplay">-</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" id="budgetProgressBar" style="width: 0%;"></div>
+            </div>
+            <div class="budget-advice" id="budgetAdviceText">
+              💡 計画的にお金を使って、残高を増やそう！
+            </div>
+          </div>
+        </div>
+
+        <!-- クイック追加アクションボタン -->
+        <div class="action-buttons-group">
+          <button id="openIncomeModalBtn" class="action-btn income-action-btn">
+            <div class="action-btn-icon"><i class="fa-solid fa-plus"></i></div>
+            <div class="action-btn-text">
+              <strong>収入を追加</strong>
+              <span>お小遣い・バイト代</span>
+            </div>
+          </button>
+          <button id="openExpenseModalBtn" class="action-btn expense-action-btn">
+            <div class="action-btn-icon"><i class="fa-solid fa-minus"></i></div>
+            <div class="action-btn-text">
+              <strong>支出を追加</strong>
+              <span>買い物・食費など</span>
+            </div>
+          </button>
+        </div>
+      </section>
+
+      <!-- 中段：支出カテゴリー別グラフ & 分析カード -->
+      <section class="card analytics-card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <i class="fa-solid fa-chart-pie"></i> 今月の支出カテゴリー
+          </h2>
+          <span class="card-subtitle" id="chartTotalExpense">合計: ¥0</span>
+        </div>
+
+        <div class="chart-container-wrapper">
+          <div class="chart-canvas-box" id="chartCanvasBox">
+            <canvas id="expensePieChart"></canvas>
+            <div id="chartCenterText" class="chart-center-text">
+              <span class="label">今月の支出</span>
+              <span class="amount" id="chartCenterAmount">¥0</span>
+            </div>
+          </div>
+
+          <!-- 支出がない時のメッセージ -->
+          <div id="noChartDataMessage" class="no-data-placeholder" style="display: none;">
+            <div class="placeholder-icon">🎉</div>
+            <p class="placeholder-title">今月はまだ支出がありません</p>
+            <p class="placeholder-desc">支出を記録すると、カテゴリーごとのグラフが表示されます。</p>
+          </div>
+        </div>
+
+        <!-- カテゴリー別内訳リスト -->
+        <div class="category-breakdown-list" id="categoryBreakdownList">
+          <!-- JSで動的生成 -->
+        </div>
+      </section>
+
+      <!-- 下段：履歴一覧セクション -->
+      <section class="card history-card">
+        <div class="card-header history-header">
+          <div>
+            <h2 class="card-title">
+              <i class="fa-solid fa-clock-rotate-left"></i> 収支の履歴
+            </h2>
+            <span class="card-subtitle" id="historyCountText">0件の記録</span>
+          </div>
+
+          <!-- フィルタータイプ（すべて / 支出 / 収入） -->
+          <div class="filter-tabs">
+            <button class="filter-tab-btn active" data-filter="all">すべて</button>
+            <button class="filter-tab-btn" data-filter="expense">支出</button>
+            <button class="filter-tab-btn" data-filter="income">収入</button>
+          </div>
+        </div>
+
+        <!-- 検索・絞り込みフィルターバー -->
+        <div class="history-controls">
+          <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="searchInput" placeholder="メモやカテゴリで検索...">
+            <button id="clearSearchBtn" class="clear-search-btn" style="display: none;">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <div class="category-filter-box">
+            <select id="categorySelectFilter">
+              <option value="all">すべてのカテゴリー</option>
+              <!-- JSで動的生成 -->
+            </select>
+          </div>
+        </div>
+
+        <!-- 履歴リスト一覧 -->
+        <div class="history-list" id="historyList">
+          <!-- JSで動的に追加されます -->
+        </div>
+
+        <!-- 履歴が0件の場合のプレースホルダー -->
+        <div id="noHistoryPlaceholder" class="no-data-placeholder" style="display: none;">
+          <div class="placeholder-icon">📝</div>
+          <p class="placeholder-title">該当する記録がありません</p>
+          <p class="placeholder-desc">「収入を追加」または「支出を追加」ボタンから記録してみよう！</p>
+        </div>
+      </section>
+    </main>
+
+    <!-- フッター -->
+    <footer class="app-footer">
+      <p>おこづかい管理アプリ &copy; 2026 学生向けマネー管理ツール</p>
+      <p class="footer-note">データはお使いの端末(ブラウザ)に安全に保存されます。</p>
+    </footer>
+  </div>
+
+  <!-- ===============================
+       登録・編集モーダルダイアログ
+  ==================================== -->
+  <div class="modal-backdrop" id="entryModalBackdrop" style="display: none;">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 id="modalTitle" class="modal-title">収支を記録する</h3>
+        <button id="closeModalBtn" class="modal-close-btn" aria-label="閉じる">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="entryForm" class="modal-body">
+        <input type="hidden" id="entryId">
+
+        <!-- 収支タイプ切り替えタブ -->
+        <div class="type-switcher">
+          <button type="button" class="type-btn" id="typeExpenseBtn" data-type="expense">
+            <i class="fa-solid fa-minus"></i> 支出
+          </button>
+          <button type="button" class="type-btn" id="typeIncomeBtn" data-type="income">
+            <i class="fa-solid fa-plus"></i> 収入
+          </button>
+        </div>
+
+        <!-- 金額入力 -->
+        <div class="form-group amount-group">
+          <label for="amountInput">金額 (円) <span class="required-badge">必須</span></label>
+          <div class="amount-input-box">
+            <span class="currency-tag">¥</span>
+            <input type="number" id="amountInput" placeholder="0" min="1" max="99999999" required inputmode="numeric">
+          </div>
+          <!-- クイック金額加算ボタン -->
+          <div class="quick-amount-buttons">
+            <button type="button" class="quick-add-btn" data-add="100">+100</button>
+            <button type="button" class="quick-add-btn" data-add="500">+500</button>
+            <button type="button" class="quick-add-btn" data-add="1000">+1,000</button>
+            <button type="button" class="quick-add-btn" data-add="5000">+5,000</button>
+            <button type="button" class="quick-add-btn" data-add="10000">+1万</button>
+            <button type="button" class="quick-clear-btn" id="clearAmountBtn">クリア</button>
+          </div>
+        </div>
+
+        <!-- カテゴリー選択 -->
+        <div class="form-group">
+          <label>カテゴリー <span class="required-badge">必須</span></label>
+          <div class="category-grid" id="categoryPickerGrid">
+            <!-- JSで支出/収入に応じて動的に切り替え生成 -->
+          </div>
+          <input type="hidden" id="selectedCategory" required>
+        </div>
+
+        <!-- 日付 -->
+        <div class="form-group">
+          <label for="dateInput">日付 <span class="required-badge">必須</span></label>
+          <div class="date-input-wrapper">
+            <i class="fa-regular fa-calendar-days date-icon"></i>
+            <input type="date" id="dateInput" required>
+          </div>
+        </div>
+
+        <!-- メモ（任意） -->
+        <div class="form-group">
+          <label for="memoInput">メモ (任意)</label>
+          <div class="memo-input-wrapper">
+            <i class="fa-regular fa-comment-dots memo-icon"></i>
+            <input type="text" id="memoInput" placeholder="例: 昼食のカレー、コンビニ、参考書など" maxlength="50">
+          </div>
+        </div>
+
+        <!-- モーダルフッター（保存ボタン & 削除ボタン） -->
+        <div class="modal-footer">
+          <button type="button" id="deleteEntryBtn" class="btn btn-danger" style="display: none;">
+            <i class="fa-solid fa-trash-can"></i> 削除
+          </button>
+          <div class="modal-footer-right">
+            <button type="button" id="cancelModalBtn" class="btn btn-secondary">キャンセル</button>
+            <button type="submit" id="saveEntryBtn" class="btn btn-primary">
+              <i class="fa-solid fa-check"></i> 保存する
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===============================
+       設定・データ管理モーダル
+  ==================================== -->
+  <div class="modal-backdrop" id="settingsModalBackdrop" style="display: none;">
+    <div class="modal-container settings-modal">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fa-solid fa-sliders"></i> アプリ設定 & データ管理</h3>
+        <button id="closeSettingsModalBtn" class="modal-close-btn" aria-label="閉じる">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="modal-body settings-body">
+        <!-- 予算設定 -->
+        <div class="settings-section">
+          <h4><i class="fa-solid fa-bullseye"></i> 毎月の支出予算目標</h4>
+          <p class="settings-desc">1ヶ月に使って良い目標支出額を設定すると、使いすぎを防げます。</p>
+          <div class="budget-input-row">
+            <span class="currency-tag">¥</span>
+            <input type="number" id="monthlyBudgetInput" placeholder="例: 20000" min="0" step="1000">
+            <button type="button" id="saveBudgetBtn" class="btn btn-primary btn-sm">設定</button>
+            <button type="button" id="clearBudgetBtn" class="btn btn-secondary btn-sm">解除</button>
+          </div>
+        </div>
+
+        <hr class="modal-divider">
+
+        <!-- バックアップと復元 -->
+        <div class="settings-section">
+          <h4><i class="fa-solid fa-download"></i> データの保存・読み込み</h4>
+          <p class="settings-desc">スマホの機種変更やバックアップ用にJSONファイルとして書き出し/読み込みができます。</p>
+          <div class="settings-btn-grid">
+            <button type="button" id="exportDataBtn" class="btn btn-outline">
+              <i class="fa-solid fa-file-export"></i> データをダウンロード (JSON)
+            </button>
+            <label for="importDataFile" class="btn btn-outline import-btn-label">
+              <i class="fa-solid fa-file-import"></i> データを読み込む
+              <input type="file" id="importDataFile" accept=".json" style="display: none;">
+            </label>
+          </div>
+        </div>
+
+        <hr class="modal-divider">
+
+        <!-- サンプルデータ & 初期化 -->
+        <div class="settings-section">
+          <h4><i class="fa-solid fa-rotate-left"></i> サンプルデータ・リセット</h4>
+          <p class="settings-desc">最初に入っていたサンプルデータを再読み込みしたり、すべてのデータを消去できます。</p>
+          <div class="settings-btn-grid">
+            <button type="button" id="loadSampleDataBtn" class="btn btn-secondary">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> サンプルデータを復元
+            </button>
+            <button type="button" id="resetAllDataBtn" class="btn btn-danger-outline">
+              <i class="fa-solid fa-trash-arrow-up"></i> すべてのデータを消去
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="closeSettingsFooterBtn" class="btn btn-secondary" style="width: 100%;">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 通知トースト -->
+  <div id="toastNotification" class="toast-notification"></div>
+
+  <!-- JavaScript -->
+  <script src="app.js"></script>
+</body>
+</html>
